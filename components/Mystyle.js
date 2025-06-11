@@ -105,6 +105,7 @@ secondaryTitle: {
   color: '#333',
   marginTop: 20,
   marginBottom: 10,
+  textAlign: 'center',
 },
 horizontalScroll: {
   flexDirection: 'row',
@@ -864,6 +865,7 @@ radioOption: {
     fontWeight: 'bold',
     fontSize: 16,
   },
+  
 
 });
 

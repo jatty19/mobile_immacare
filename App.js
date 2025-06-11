@@ -10,6 +10,7 @@ import Service from './components/Service';
 import Doctors from './components/Doctors';
 // REMOVED: import { Home } from 'lucide-react-native'; - This is an icon, not a screen.
 import MyAppointmentScreen from './components/myAppointmentScreen';
+import ChangePassword from './components/ChangePassword';
 
 export default function App() {
   const SNavigation = createNativeStackNavigator();
@@ -24,6 +25,7 @@ export default function App() {
         {/* --- Main App Screens --- */}
         <SNavigation.Screen  options={{ headerShown: false }} name="Dashboard" component={Appointment} />
         <SNavigation.Screen  options={{ headerShown: false }} name="Profile" component={Profile}  />
+        <SNavigation.Screen options={{ headerShown: false }} name="ChangePassword" component={ChangePassword} />
         <SNavigation.Screen  options={{ headerShown: false }} name="Doctors" component={Doctors}  />
         <SNavigation.Screen  options={{ headerShown: false }} name="Service" component={Service} />
         <SNavigation.Screen  options={{ headerShown: false }} name="Appointment" component={AppointmentForm} />

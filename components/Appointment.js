@@ -1,7 +1,7 @@
 // components/Appointment.js
 
 import React, { useState } from "react";
-import { View, Text, TouchableOpacity, Image, Alert, ScrollView } from "react-native";
+import { View, Text, TouchableOpacity, Image, Alert, ScrollView, Linking, Platform } from "react-native";
 import { Mystyle } from "./Mystyle";
 import Icon from "react-native-vector-icons/FontAwesome";
 import { Appbar } from "react-native-paper";
@@ -29,6 +29,31 @@ const HomeScreen = () => {
       fetchUserProfile();
     }, [])
   );
+
+  const handleCallUs = () => {
+    const phoneNumber = '09283985500';
+    Linking.openURL(`tel:${phoneNumber}`).catch(err => Alert.alert("Error", "Could not make the call."));
+  };
+
+  const handleEmailUs = () => {
+    const email = 'iclcinc2007@yahoo.com';
+    const subject = 'Inquiry from ImmaCare+ App';
+    Linking.openURL(`mailto:${email}?subject=${subject}`).catch(err => Alert.alert("Error", "Could not open email app."));
+  };
+
+  const handleFindUs = () => {
+    const latitude = 14.564805070715794;
+    const longitude = 121.08507950150369;
+    const label = '233 Dr. Pilapil St.';
+
+    // Create a platform-specific URL
+    const url = Platform.select({
+      ios: `maps:${latitude},${longitude}?q=${label}`,
+      android: `geo:${latitude},${longitude}?q=${label}`
+    });
+
+    Linking.openURL(url).catch(err => Alert.alert("Error", "Could not open maps."));
+  };
 
   return (
     <View style={Mystyle.containerDashbord}>
@@ -77,22 +102,26 @@ const HomeScreen = () => {
             </TouchableOpacity>
           </View>
 
-          {/* --- 3. NEW HORIZONTAL CONTACT SECTION --- */}
           <Text style={Mystyle.secondaryTitle}>Get In Touch</Text>
-          <ScrollView horizontal={true} showsHorizontalScrollIndicator={false} style={Mystyle.horizontalScroll}>
-             <TouchableOpacity style={Mystyle.contactCard}>
-                <Icon name="phone" size={24} color="white" />
-                <Text style={Mystyle.contactCardText}>Call Us</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={Mystyle.contactCard}>
-                <Icon name="map-marker" size={24} color="white" />
-                <Text style={Mystyle.contactCardText}>Find Us</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={Mystyle.contactCard}>
-                <Icon name="envelope" size={24} color="white" />
-                <Text style={Mystyle.contactCardText}>Email Us</Text>
-              </TouchableOpacity>
-          </ScrollView>
+          <View style={{ alignItems: 'center' }}>
+            <ScrollView 
+              horizontal={true} 
+              showsHorizontalScrollIndicator={false}
+            >
+                <TouchableOpacity style={Mystyle.contactCard} onPress={handleCallUs}>
+                  <Icon name="phone" size={24} color="white" />
+                  <Text style={Mystyle.contactCardText}>Call Us</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={Mystyle.contactCard} onPress={handleFindUs}>
+                  <Icon name="map-marker" size={24} color="white" />
+                  <Text style={Mystyle.contactCardText}>Find Us</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={Mystyle.contactCard} onPress={handleEmailUs}>
+                  <Icon name="envelope" size={24} color="white" />
+                  <Text style={Mystyle.contactCardText}>Email Us</Text>
+                </TouchableOpacity>
+            </ScrollView>
+          </View>
 
         </ScrollView>
       </View>

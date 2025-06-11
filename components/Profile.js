@@ -15,7 +15,7 @@ const Profile = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // No changes needed in any of the logic (useEffect, handlers, etc.)
+  // ... (No changes needed in useFocusEffect or any of the handlers)
   useFocusEffect(
     React.useCallback(() => {
       const fetchProfileData = async () => {
@@ -74,15 +74,11 @@ const Profile = () => {
     setUserData(prevData => ({ ...prevData, [field]: value }));
   };
 
-  // --- 2. Change the outermost <View> to a <ScrollView> ---
-  // We use `contentContainerStyle` to ensure content can grow and has padding.
-  // The `style` prop gives it the blue background color.
   return (
     <ScrollView 
         style={{backgroundColor: Mystyle.containerProfile.backgroundColor}} 
-        contentContainerStyle={{paddingBottom: 50}} // Add padding to the bottom
+        contentContainerStyle={{paddingBottom: 50}}
     >
-      {/* All content is now a direct child of the ScrollView */}
       <View style={Mystyle.headerProfile}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={{ position: "absolute", left: 20, top: 60 }}>
           <ArrowLeft color="white" size={24} />
@@ -99,8 +95,6 @@ const Profile = () => {
         </Text>
       </View>
 
-      {/* --- 3. The inner wrapper is now just a regular <View> --- */}
-      {/* It no longer needs to be a ScrollView because its parent handles scrolling. */}
       <View style={Mystyle.form}>
         
         <Text style={Mystyle.label}>First Name</Text>
@@ -125,8 +119,15 @@ const Profile = () => {
         <TextInput style={Mystyle.profile_input} value={String(userData.Age || '')} editable={isEditing} keyboardType="numeric" onChangeText={(text) => handleChange("Age", text)} />
 
         {!isEditing && (
-
+          // --- WRAP BUTTONS IN A VIEW FOR STYLING ---
           <View style={Mystyle.logoutButtonContainer}>
+            <TouchableOpacity 
+              style={[Mystyle.logoutButton, {backgroundColor: '#007AFF', marginBottom: 15}]} 
+              onPress={() => navigation.navigate('ChangePassword')}
+            >
+              <Text style={Mystyle.logoutText}>CHANGE PASSWORD</Text>
+            </TouchableOpacity>
+
             <TouchableOpacity style={Mystyle.logoutButton} onPress={handleLogout}>
               <Text style={Mystyle.logoutText}>LOGOUT</Text>
             </TouchableOpacity>

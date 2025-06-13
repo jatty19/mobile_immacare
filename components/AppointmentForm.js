@@ -6,11 +6,11 @@ import {
   SafeAreaView, TouchableOpacity, Modal, Alert, ActivityIndicator
 } from "react-native";
 import { Picker } from "@react-native-picker/picker";
-import DateTimePickerModal from "react-native-modal-datetime-picker";
 import { Mystyle } from "./Mystyle";
 import { useNavigation, useRoute, useFocusEffect } from "@react-navigation/native";
 import { ArrowLeft } from "lucide-react-native";
 import api from "./api/api";
+import { Calendar } from 'react-native-calendars';
 
 const AppointmentForm = () => {
   const navigation = useNavigation();
@@ -29,7 +29,7 @@ const AppointmentForm = () => {
   // State for the new date/time logic
   const [doctorSchedule, setDoctorSchedule] = useState(null);
   const [availableTimes, setAvailableTimes] = useState([]);
-  const [isDatePickerVisible, setDatePickerVisibility] = useState(false);
+   const [isCalendarModalVisible, setCalendarModalVisible] = useState(false);
   const [loadingTimes, setLoadingTimes] = useState(false);
 
   const [isModalVisible, setIsModalVisible] = useState(false);
@@ -65,7 +65,8 @@ const AppointmentForm = () => {
             setForm(prevForm => ({
                 ...prevForm,
                 doctor: route.params.doctorId,
-                specialization: route.params.specializationId
+                specialization: route.params.specializationId,
+                reason: route.params.reason || prevForm.reason 
             }));
           }
 
@@ -142,26 +143,13 @@ const AppointmentForm = () => {
     setForm({ ...form, [key]: value });
   };
 
-  const showDatePicker = () => {
-    setDatePickerVisibility(true);
-  };
 
-  const hideDatePicker = () => {
-    setDatePickerVisibility(false);
+  const onDayPress = (day) => {
+    // day object from the calendar is { dateString: 'YYYY-MM-DD', ... }
+    setForm({ ...form, date: day.dateString });
+    setCalendarModalVisible(false); // Close the modal after selection
   };
   
-  const handleDateConfirm = (selectedDate) => {
-    const dayOfWeek = selectedDate.toLocaleDateString('en-US', { weekday: 'long' });
-    if (!doctorSchedule[dayOfWeek] || doctorSchedule[dayOfWeek].length === 0) {
-        Alert.alert("Not Available", "The selected doctor is not available on this day of the week.");
-        hideDatePicker();
-        return;
-    }
-    const formattedDate = selectedDate.toISOString().split('T')[0];
-    setForm({ ...form, date: formattedDate });
-    hideDatePicker();
-  };
-
   const handleSubmit = () => {
     if (!form.firstName || !form.lastName || !form.phone || !form.age || !form.address || !form.specialization || !form.doctor || !form.date || !form.time || !form.reason) {
         Alert.alert("Missing Information", "Please fill in all required fields.");
@@ -170,7 +158,7 @@ const AppointmentForm = () => {
     setIsModalVisible(true);
   };
 
-  const handleConfirm = async () => {
+   const handleConfirm = async () => {
     setIsSubmitting(true);
     try {
       const appointmentData = {
@@ -180,12 +168,18 @@ const AppointmentForm = () => {
         time: form.time,
         reason: form.reason,
       };
+
+      if (route.params?.rescheduleOf) {
+        appointmentData.rescheduleOf = route.params.rescheduleOf;
+      }
+
       await api.post('/user/appointments', appointmentData);
+
       setIsSubmitting(false);
       setIsModalVisible(false);
       Alert.alert("Success!", "Your appointment request has been submitted.", [
         { text: "OK", onPress: () => navigation.navigate('Dashboard') }
-      ]);Mystyle.formCard
+      ]);
     } catch (err) {
       setIsSubmitting(false);
       console.error("Failed to submit appointment:", err.response?.data || err.message);
@@ -195,6 +189,55 @@ const AppointmentForm = () => {
 
   const handleEdit = () => {
     setIsModalVisible(false);
+  };
+
+  const getMarkedDates = () => {
+    if (!doctorSchedule) {
+      return {}; // Return empty object if no schedule is loaded
+    }
+    
+    // Create an object of all dates in the current month to mark as disabled
+    const marked = {};
+    const availableDays = Object.keys(doctorSchedule).filter(day => doctorSchedule[day].length > 0);
+    const dayNameToNum = { "Sunday": 0, "Monday": 1, "Tuesday": 2, "Wednesday": 3, "Thursday": 4, "Friday": 5, "Saturday": 6 };
+
+    const today = new Date();
+    // Mark the next 90 days for performance, adjust as needed
+    for (let i = 0; i < 90; i++) {
+        const date = new Date(today);
+        date.setDate(today.getDate() + i);
+
+        const dayNum = date.getDay();
+        const dayName = Object.keys(dayNameToNum).find(key => dayNameToNum[key] === dayNum);
+        
+        // If the day is NOT in the doctor's available weekdays
+        if (!availableDays.includes(dayName)) {
+            const dateString = date.toISOString().split('T')[0];
+            marked[dateString] = { 
+                disabled: true, 
+                disableTouchEvent: true,
+                // Custom styling for unavailable dates
+                customStyles: {
+                    container: {
+                        backgroundColor: '#ffdddd' // A light red background
+                    },
+                    text: {
+                        color: '#aaa', // Gray out the text
+                        textDecorationLine: 'line-through'
+                    }
+                }
+            };
+        }
+    }
+    // Mark the selected date with a blue circle
+    if (form.date) {
+        marked[form.date] = {
+            ...marked[form.date], // Keep disabled styles if they exist
+            selected: true,
+            selectedColor: '#007bff'
+        };
+    }
+    return marked;
   };
 
   return (
@@ -264,13 +307,27 @@ const AppointmentForm = () => {
             
             <View style={Mystyle.inputGroup}>
               <Text style={Mystyle.label}>Date</Text>
-              <TouchableOpacity style={Mystyle.inputField} onPress={showDatePicker} disabled={!form.doctor}>
-                <Text style={{ color: form.date ? '#000' : '#999' }}>{form.date ? new Date(form.date).toLocaleDateString() : 'Select a Date'}</Text>
+              <TouchableOpacity style={Mystyle.inputField} onPress={() => setCalendarModalVisible(true)} disabled={!form.doctor}>
+                <Text style={{ color: form.date ? '#000' : '#999' }}>
+                    {form.date ? new Date(form.date + 'T00:00:00').toLocaleDateString() : 'Select a Date'}
+                </Text>
               </TouchableOpacity>
             </View>
-            
-            <DateTimePickerModal isVisible={isDatePickerVisible} mode="date" onConfirm={handleDateConfirm} onCancel={hideDatePicker} minimumDate={new Date()} />
 
+            <Modal visible={isCalendarModalVisible} animationType="slide">
+                <SafeAreaView style={{flex: 1}}>
+                    <Calendar
+                        minDate={new Date().toISOString().split('T')[0]} // Disable past dates
+                        onDayPress={onDayPress}
+                        markedDates={getMarkedDates()}
+                        markingType={'custom'} // Enable custom styling
+                    />
+                    <TouchableOpacity style={Mystyle.primaryButton} onPress={() => setCalendarModalVisible(false)}>
+                        <Text style={Mystyle.primaryButtonText}>CLOSE</Text>
+                    </TouchableOpacity>
+                </SafeAreaView>
+            </Modal>
+            
             <View style={Mystyle.inputGroup}>
               <Text style={Mystyle.label}>Available Time</Text>
               {loadingTimes ? (
@@ -304,7 +361,7 @@ const AppointmentForm = () => {
         <View style={Mystyle.modalBackground}>
           <View style={Mystyle.verificationPopupContainer}>
             <Text style={Mystyle.verificationPopupTitle}>Verification</Text>
-            <Text style={Mystyle.verificationPopupText}>Name: {form.name}</Text>
+            <Text style={Mystyle.verificationPopupText}>Name: {`${form.firstName} ${form.lastName}`}</Text>
             <Text style={Mystyle.verificationPopupText}>Date: {form.date}</Text>
             <Text style={Mystyle.verificationPopupText}>Time: {form.time}</Text>
             <Text style={Mystyle.verificationNoteText}>NOTE: Your appointment isn't confirmed yet. We will call you for final confirmation.</Text>

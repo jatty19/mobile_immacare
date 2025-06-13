@@ -125,8 +125,6 @@ contactCardText: {
   fontWeight: 'bold',
   fontSize: 14,
 },
-
-
   logo: {
     height: 80,
     width: 100,

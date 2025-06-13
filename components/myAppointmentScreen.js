@@ -43,7 +43,7 @@ const MyAppointmentScreen = () => {
     }, [])
   );
 
-  const handleCancelAppointment = (appointmentId) => {
+   const handleCancelAppointment = (appointmentId) => {
     Alert.alert(
       'Cancel Appointment',
       'Are you sure you want to cancel this appointment?',
@@ -56,11 +56,13 @@ const MyAppointmentScreen = () => {
           text: 'Yes, Cancel',
           onPress: async () => {
             try {
-              // Assumes a DELETE endpoint like /user/appointments/:id
-              await api.delete(`/user/appointments/${appointmentId}`);
+              await api.put(`/user/appointments/${appointmentId}/cancel`);
               
-              // Refresh the list by filtering out the cancelled appointment
-              setAppointments(prev => prev.filter(app => app._id !== appointmentId));
+              setAppointments(prev => 
+                prev.map(app => 
+                  app._id === appointmentId ? { ...app, status: 'Cancelled' } : app
+                )
+              );
 
               Alert.alert('Success', 'Your appointment has been cancelled.');
             } catch (err) {
@@ -91,31 +93,72 @@ const MyAppointmentScreen = () => {
       </SafeAreaView>
     );
   }
+
+  const handleReschedule = (item) => {
+    navigation.navigate('Appointment', {
+      rescheduleOf: item._id,
+      doctorId: item.doctor?._id,
+      specializationId: item.specialization?._id,
+      reason: item.reason
+    });
+  };
   
-  const renderAppointment = ({ item }) => (
-    <View style={styles.appointmentCard}>
-      <Text style={styles.doctorName}>Dr. {item.doctor?.userAccount?.fullname || 'N/A'}</Text>
-      <Text style={styles.specialization}>{item.specialization?.name || 'N/A'}</Text>
-      <View style={styles.detailRow}>
-        <Text style={styles.detailLabel}>Date:</Text>
-        <Text style={styles.detailValue}>{new Date(item.date).toLocaleDateString()}</Text>
+   const renderAppointment = ({ item }) => {
+    // --- Determine status color and text ---
+    let statusComponent = null;
+    let cardStyle = styles.appointmentCard; // Default style
+
+    if (item.status === 'Scheduled') {
+      statusComponent = (
+        <View style={styles.buttonContainer}>
+          <TouchableOpacity 
+            style={styles.rescheduleButton} 
+            onPress={() => handleReschedule(item)}
+          >
+            <Text style={styles.rescheduleButtonText}>Reschedule</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.cancelButton} 
+            onPress={() => handleCancelAppointment(item._id)}
+          >
+            <Text style={styles.cancelButtonText}>Cancel</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    } else {
+      let statusColor = '#28a745'; // Green for Completed
+      if (item.status === 'Cancelled') statusColor = '#dc3545'; // Red
+      if (item.status === 'Rescheduled') statusColor = '#ffc107'; // Amber
+
+      statusComponent = (
+        <View style={styles.statusContainer}>
+          <Text style={[styles.statusText, { color: statusColor }]}>{item.status}</Text>
+        </View>
+      );
+      // Fade out non-active appointments
+      cardStyle = [styles.appointmentCard, { opacity: 0.6 }];
+    }
+
+    return (
+      <View style={cardStyle}>
+        <Text style={styles.doctorName}>Dr. {item.doctor?.userAccount?.fullname || 'N/A'}</Text>
+        <Text style={styles.specialization}>{item.specialization?.name || 'N/A'}</Text>
+        <View style={styles.detailRow}>
+          <Text style={styles.detailLabel}>Date:</Text>
+          <Text style={styles.detailValue}>{new Date(item.date).toLocaleDateString()}</Text>
+        </View>
+        <View style={styles.detailRow}>
+          <Text style={styles.detailLabel}>Time:</Text>
+          <Text style={styles.detailValue}>{item.time}</Text>
+        </View>
+        <View style={styles.detailRow}>
+          <Text style={styles.detailLabel}>Reason:</Text>
+          <Text style={styles.detailValue}>{item.reason || 'N/A'}</Text>
+        </View>
+        {statusComponent}
       </View>
-       <View style={styles.detailRow}>
-        <Text style={styles.detailLabel}>Time:</Text>
-        <Text style={styles.detailValue}>{item.time}</Text>
-      </View>
-      <View style={styles.detailRow}>
-        <Text style={styles.detailLabel}>Reason:</Text>
-        <Text style={styles.detailValue}>{item.reason || 'N/A'}</Text>
-      </View>
-      <TouchableOpacity 
-        style={styles.cancelButton} 
-        onPress={() => handleCancelAppointment(item._id)}
-      >
-        <Text style={styles.cancelButtonText}>Cancel Appointment</Text>
-      </TouchableOpacity>
-    </View>
-  );
+    );
+  };
 
   return (
     <SafeAreaView style={styles.screen}>
@@ -151,6 +194,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    padding: 20,
   },
   header: {
     flexDirection: 'row',
@@ -204,25 +248,58 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#555',
   },
-  cancelButton: {
+  emptyText: {
+    fontSize: 16,
+    color: '#888',
+    textAlign: 'center',
+  },
+  errorText: {
+    fontSize: 16,
+    color: 'red',
+    textAlign: 'center',
+  },
+  
+  // --- THESE ARE THE CRUCIAL NEW AND CORRECTED STYLES ---
+  buttonContainer: {
+    flexDirection: 'row',      // This puts the buttons side-by-side
+    justifyContent: 'space-between',
     marginTop: 15,
-    backgroundColor: '#dc3545',
+  },
+  rescheduleButton: {
+    backgroundColor: '#007bff', // Blue for reschedule
     padding: 10,
     borderRadius: 5,
     alignItems: 'center',
+    flex: 1,                   // This makes the button take up half the space
+    marginRight: 10,           // Adds a gap between the buttons
+  },
+  rescheduleButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
+  },
+  cancelButton: {
+    backgroundColor: '#dc3545', // Red for cancel
+    padding: 10,
+    borderRadius: 5,
+    alignItems: 'center',
+    flex: 1,                   // This makes the button take up the other half
   },
   cancelButtonText: {
     color: 'white',
     fontWeight: 'bold',
   },
-  emptyText: {
-    fontSize: 16,
-    color: '#888',
+  statusContainer: {
+    marginTop: 15,
+    paddingVertical: 10,
+    borderRadius: 5,
+    backgroundColor: '#f8f9fa',
+    alignItems: 'center',
   },
-  errorText: {
-      fontSize: 16,
-      color: 'red',
-  }
+  statusText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    textTransform: 'uppercase',
+  },
 });
 
 export default MyAppointmentScreen;
